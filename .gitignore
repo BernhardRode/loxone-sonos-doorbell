@@ -1,0 +1,4 @@
+node_modules
+dist
+assets/sounds
+.DS_Store
