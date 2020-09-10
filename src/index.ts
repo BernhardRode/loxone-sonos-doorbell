@@ -3,6 +3,7 @@ import fastifyStatic from 'fastify-static';
 import path from 'path';
 import { InternalServerError, NotFoundError } from 'restify-errors';
 import { Sonos, AsyncDeviceDiscovery } from 'sonos';
+import { DH_UNABLE_TO_CHECK_GENERATOR } from 'constants';
 
 const ring = async (ip, uri, volume = 30) => {
   const device = new Sonos(ip)
@@ -13,7 +14,7 @@ const ring = async (ip, uri, volume = 30) => {
   // }
   // await device.play(uri)
   console.log(`Play Notification ${uri}`);
-  const result = await device.playNotification({ uri, volume })
+  const result = device.playNotification({ uri, volume })
   console.log(result);
 
   // if (currentVolume !== volume) {
@@ -39,12 +40,12 @@ const start = async () => {
 
   const server = fastify({ logger: true })
   server.register(fastifyStatic, staticOptions)
-  // Declare a route
+
   server.get('/ring/:ip', async (request) => {
     try {
       const uri = `http://${request.headers.host}/${soundsFolder}/${fileName}`
       const { ip } = request.params as any
-      await ring(ip, uri)
+      ring(ip, uri)
       return 'Ok'
     } catch (error) {
       server.log.error(error)
@@ -61,12 +62,32 @@ const start = async () => {
     }
   })
 
+  // Declare a route
+  server.get('/groups', async () => {
+    try {
+      const discovery = new AsyncDeviceDiscovery()
+      const devices = await discovery.discoverMultiple()
+
+      // for (const device of devices) {
+      //   const groups = await device.getAllGroups()
+      //   console.log(groups);
+      // }
+      // console.log({ device, model });
+      // const groups = await device.getAllGroups()
+
+      // return groups
+      return { devices }
+    } catch (error) {
+      server.log.error(error)
+      return new InternalServerError()
+    }
+  })
+
   try {
     await server.listen(port, '0.0.0.0')
     server.log.info(`server listening on ${port}`)
   } catch (err) {
     server.log.error(err)
-    process.exit(1)
   }
 }
 
